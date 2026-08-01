@@ -75,7 +75,7 @@ export function Console({ serverId }: { serverId: string }) {
           </p>
         ) : (
           lines.map((l, i) => (
-            <div key={`${l.ts}-${i}`} className="whitespace-pre-wrap break-words">
+            <div key={`${l.ts}-${i}`} className="whitespace-pre-wrap wrap-break-word">
               {l.line}
             </div>
           ))

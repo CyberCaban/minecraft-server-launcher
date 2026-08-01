@@ -5,7 +5,7 @@ pub fn render_template(project: &str, port: u16, memory_gb: u32, rcon_password: 
         r#"services:
   minecraft:
     image: itzg/minecraft-server:latest
-    container_name: {project}
+    container_name: "{project}"
     tty: true
     stdin_open: true
     ports:
@@ -16,9 +16,7 @@ pub fn render_template(project: &str, port: u16, memory_gb: u32, rcon_password: 
       RCON_PASSWORD: "{rcon_password}"
       GUI: "false"
       MEMORY: "{memory_gb}G"
-      TYPE: forge
       VERSION: 1.20.1
-      FORGE_VERSION: 47.4.13
       SKIP_GENERIC_PACK_UPDATE_CHECK: "true"
     volumes:
       - ./data:/data
