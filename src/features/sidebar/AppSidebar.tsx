@@ -1,8 +1,6 @@
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { useState } from "react";
+import clsx from "clsx";
+
 import {
   Sidebar,
   SidebarContent,
@@ -11,52 +9,65 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { ChevronDown } from "lucide-react";
-import { useServersStore } from "@/store/serversStore";
-import { Button } from "@/components/ui/button";
-import clsx from "clsx";
+import { useServersStore, type ServerStatus } from "@/store/serversStore";
+import { NewServerDialog } from "./NewServerDialog";
+
+const DOT: Record<ServerStatus, string> = {
+  running: "bg-emerald-400",
+  stopped: "bg-muted-foreground/50",
+  starting: "bg-amber-400",
+  stopping: "bg-amber-400",
+  error: "bg-red-400",
+};
 
 export function AppSidebar() {
-  const { servers, selectedServerId, selectServer } = useServersStore();
+  const servers = useServersStore((s) => s.servers);
+  const selectedServerId = useServersStore((s) => s.selectedServerId);
+  const selectServer = useServersStore((s) => s.selectServer);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   return (
     <Sidebar>
       <SidebarHeader>
-        <h1 className="text-lg font-bold">Minecraft Server Launcher</h1>
+        <h1 className="px-2 py-1 text-lg font-bold">
+          Minecraft Server Launcher
+        </h1>
       </SidebarHeader>
       <SidebarContent>
-        <Collapsible className="group/collapsible">
-          <SidebarGroup>
-            <SidebarGroupLabel>
-              <CollapsibleTrigger
-                render={
-                  <Button className="flex flex-row items-center gap-2 text-sm font-medium leading-none text-muted-foreground transition-colors hover:text-foreground data-[state=open]/collapsible:text-foreground">
-                    Servers
-                    <ChevronDown className="ml-auto transition-transform group-data-panel-open/button:rotate-180" />
-                  </Button>
-                }
-              ></CollapsibleTrigger>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              <SidebarMenu>
-                {servers.map((server) => (
-                  <SidebarMenuItem
-                    key={server.id}
-                    onClick={() => selectServer(server.id)}
-                    className={clsx({
-                      "bg-muted text-muted-foreground":
-                        selectedServerId === server.id,
-                    })}
-                  >
-                    {server.name}
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible>
-        <SidebarGroup />
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            <div className="flex w-full items-center justify-between">
+              <span>Servers</span>
+              <NewServerDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+            </div>
+          </SidebarGroupLabel>
+          <SidebarMenu>
+            {servers.map((server) => (
+              <SidebarMenuItem key={server.id}>
+                <SidebarMenuButton
+                  isActive={selectedServerId === server.id}
+                  onClick={() => selectServer(server.id)}
+                >
+                  <span
+                    className={clsx(
+                      "size-1.5 shrink-0 rounded-none",
+                      DOT[server.status],
+                    )}
+                  />
+                  <span className="flex-1 truncate">{server.name}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+            {servers.length === 0 && (
+              <p className="px-3 py-2 text-xs text-muted-foreground">
+                No servers yet. Click + to add one.
+              </p>
+            )}
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter />
     </Sidebar>
