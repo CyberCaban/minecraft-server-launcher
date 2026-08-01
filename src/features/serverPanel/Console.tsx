@@ -47,7 +47,8 @@ export function Console({ serverId }: { serverId: string }) {
   };
 
   const running = server?.status === "running";
-  const canSend = running && Boolean(server?.hasRcon);
+  const canSend = running;
+  const viaRcon = running && Boolean(server?.hasRcon);
 
   return (
     <div className="flex flex-col gap-2">
@@ -88,11 +89,11 @@ export function Console({ serverId }: { serverId: string }) {
             if (e.key === "Enter") submit();
           }}
           placeholder={
-            canSend
-              ? "Enter a server command…"
-              : running
-                ? "Console input disabled (RCON off)"
-                : "Start the server to send commands"
+            running
+              ? viaRcon
+                ? "Enter a server command…"
+                : "Enter a server command (console stdin)…"
+              : "Start the server to send commands"
           }
           disabled={!canSend}
           className="flex-1"
@@ -101,10 +102,10 @@ export function Console({ serverId }: { serverId: string }) {
           <SendHorizontal />
         </Button>
       </div>
-      {running && !server?.hasRcon && (
+      {running && !viaRcon && (
         <p className="text-xs text-muted-foreground">
-          RCON is disabled in this compose file, so console commands are
-          unavailable.
+          RCON is off in this compose file, so commands are written straight to
+          the server console via stdin.
         </p>
       )}
     </div>

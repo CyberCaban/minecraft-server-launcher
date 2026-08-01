@@ -15,9 +15,17 @@ use crate::templates;
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum CreateSource {
-    Template { port: u16, memory_gb: u32 },
-    Yaml { content: String },
-    File { path: String },
+    Template {
+        port: u16,
+        #[serde(rename = "memoryGb")]
+        memory_gb: u32,
+    },
+    Yaml {
+        content: String,
+    },
+    File {
+        path: String,
+    },
 }
 
 fn generate_id() -> String {
@@ -60,7 +68,9 @@ fn random_password() -> String {
         .collect();
     let mut out = String::new();
     for _ in 0..16 {
-        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         out.push(alphabet[(seed as usize) % alphabet.len()]);
     }
     out
@@ -125,7 +135,10 @@ fn list_all_meta(state: &AppState) -> Vec<ServerMeta> {
 }
 
 async fn resolve_container(state: &AppState, server_id: &str) -> Result<String, String> {
-    let docker = state.docker.clone().ok_or("Docker unavailable".to_string())?;
+    let docker = state
+        .docker
+        .clone()
+        .ok_or("Docker unavailable".to_string())?;
     let project = {
         let servers = state.servers.lock().unwrap();
         servers
@@ -256,7 +269,10 @@ pub async fn start_server(
     state: State<'_, AppState>,
     server_id: String,
 ) -> Result<ServerMeta, String> {
-    let docker = state.docker.clone().ok_or("Docker unavailable".to_string())?;
+    let docker = state
+        .docker
+        .clone()
+        .ok_or("Docker unavailable".to_string())?;
 
     let (project, path) = {
         let mut servers = state.servers.lock().unwrap();
@@ -370,7 +386,10 @@ pub async fn restart_server(
     state: State<'_, AppState>,
     server_id: String,
 ) -> Result<ServerMeta, String> {
-    let docker = state.docker.clone().ok_or("Docker unavailable".to_string())?;
+    let docker = state
+        .docker
+        .clone()
+        .ok_or("Docker unavailable".to_string())?;
     if let Some(handle) = state.log_tasks.lock().unwrap().remove(&server_id) {
         handle.abort();
     }
@@ -383,7 +402,11 @@ pub async fn restart_server(
             .ok_or("Server not found".to_string())?;
         (entry.meta.project.clone(), PathBuf::from(&entry.meta.path))
     };
-    tracing::info!(server_id, project, "restart_server: running compose restart");
+    tracing::info!(
+        server_id,
+        project,
+        "restart_server: running compose restart"
+    );
 
     let result = async {
         let compose_file = path.join("docker-compose.yml");
@@ -412,7 +435,11 @@ pub async fn restart_server(
                 server_id.clone(),
                 cid,
             ));
-            state.log_tasks.lock().unwrap().insert(server_id.clone(), handle);
+            state
+                .log_tasks
+                .lock()
+                .unwrap()
+                .insert(server_id.clone(), handle);
         }
 
         find_meta(&state, &server_id).ok_or("Server not found".to_string())
@@ -427,10 +454,7 @@ pub async fn restart_server(
 }
 
 #[tauri::command]
-pub async fn remove_server(
-    state: State<'_, AppState>,
-    server_id: String,
-) -> Result<(), String> {
+pub async fn remove_server(state: State<'_, AppState>, server_id: String) -> Result<(), String> {
     if let Some(handle) = state.log_tasks.lock().unwrap().remove(&server_id) {
         handle.abort();
     }
@@ -464,7 +488,10 @@ pub async fn get_server_status(
     state: State<'_, AppState>,
     server_id: String,
 ) -> Result<ServerMeta, String> {
-    let docker = state.docker.clone().ok_or("Docker unavailable".to_string())?;
+    let docker = state
+        .docker
+        .clone()
+        .ok_or("Docker unavailable".to_string())?;
     let project = {
         let servers = state.servers.lock().unwrap();
         servers
@@ -542,18 +569,51 @@ pub async fn send_command(
     server_id: String,
     command: String,
 ) -> Result<String, String> {
-    let docker = state.docker.clone().ok_or("Docker unavailable".to_string())?;
+    let docker = state
+        .docker
+        .clone()
+        .ok_or("Docker unavailable".to_string())?;
     let container_id = resolve_container(&state, &server_id).await?;
+    let has_rcon = {
+        let servers = state.servers.lock().unwrap();
+        servers
+            .iter()
+            .find(|e| e.meta.id == server_id)
+            .map(|e| e.meta.has_rcon)
+            .unwrap_or(false)
+    };
     let cmd = command.trim().to_string();
     if cmd.is_empty() {
         return Ok(String::new());
     }
-    tracing::debug!(server_id, cmd = %cmd, "sending command via rcon");
-    let result = docker_mod::run_exec(&docker, &container_id, &["rcon-cli", cmd.as_str()]).await;
-    if let Err(e) = &result {
-        tracing::warn!(server_id, cmd = %cmd, error = %e, "send_command failed");
+
+    if has_rcon {
+        match docker_mod::run_exec(&docker, &container_id, &["rcon-cli", cmd.as_str()]).await {
+            Ok(out) => {
+                tracing::debug!(server_id, cmd = %cmd, "command sent via rcon");
+                return Ok(out);
+            }
+            Err(e) => {
+                tracing::warn!(
+                    server_id,
+                    cmd = %cmd,
+                    error = %e,
+                    "rcon failed, falling back to container stdin"
+                );
+            }
+        }
     }
-    result
+
+    match docker_mod::send_stdin(&docker, &container_id, &cmd).await {
+        Ok(out) => {
+            tracing::debug!(server_id, cmd = %cmd, "command sent via container stdin");
+            Ok(out)
+        }
+        Err(e) => {
+            tracing::error!(server_id, cmd = %cmd, error = %e, "send_command failed");
+            Err(format!("Failed to send command: {e}"))
+        }
+    }
 }
 
 #[tauri::command]
@@ -562,7 +622,10 @@ pub async fn get_server_logs(
     server_id: String,
     lines: Option<u32>,
 ) -> Result<Vec<String>, String> {
-    let docker = state.docker.clone().ok_or("Docker unavailable".to_string())?;
+    let docker = state
+        .docker
+        .clone()
+        .ok_or("Docker unavailable".to_string())?;
     let container_id = resolve_container(&state, &server_id).await?;
     let tail = lines.unwrap_or(200).to_string();
     logging::recent_logs(&docker, &container_id, &tail).await

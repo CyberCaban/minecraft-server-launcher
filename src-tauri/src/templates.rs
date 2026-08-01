@@ -1,4 +1,4 @@
-pub const TEMPLATE_NAME: &str = "TerraFirmaGreg (Forge 1.20.1)";
+pub const TEMPLATE_NAME: &str = "Forge 1.20.1";
 
 pub fn render_template(project: &str, port: u16, memory_gb: u32, rcon_password: &str) -> String {
     format!(
@@ -10,7 +10,6 @@ pub fn render_template(project: &str, port: u16, memory_gb: u32, rcon_password: 
     stdin_open: true
     ports:
       - "{port}:25565"
-      - "24454:24454/udp" # simple voice chat
     environment:
       EULA: "true"
       ENABLE_RCON: "true"

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Box, Plus, Server } from "lucide-react";
 import clsx from "clsx";
 
 import {
@@ -12,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useServersStore, type ServerStatus } from "@/store/serversStore";
 import { NewServerDialog } from "./NewServerDialog";
 
@@ -30,46 +32,63 @@ export function AppSidebar() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <h1 className="px-2 py-1 text-lg font-bold">
-          Minecraft Server Launcher
-        </h1>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>
-            <div className="flex w-full items-center justify-between">
-              <span>Servers</span>
-              <NewServerDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-            </div>
-          </SidebarGroupLabel>
+    <TooltipProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <div className="flex items-center gap-2 px-2 py-1.5">
+            <Box className="size-5 shrink-0" />
+            <span className="truncate text-sm font-bold group-data-[collapsible=icon]:hidden">
+              Minecraft Server Launcher
+            </span>
+          </div>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Servers</SidebarGroupLabel>
+            <SidebarMenu>
+              {servers.map((server) => (
+                <SidebarMenuItem key={server.id}>
+                  <SidebarMenuButton
+                    isActive={selectedServerId === server.id}
+                    onClick={() => selectServer(server.id)}
+                    tooltip={server.name}
+                  >
+                    <Server className="size-4 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate">{server.name}</span>
+                    <span
+                      className={clsx(
+                        "size-2 shrink-0 rounded-full",
+                        DOT[server.status],
+                      )}
+                    />
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+              {servers.length === 0 && (
+                <p className="px-3 py-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+                  No servers yet. Click + to add one.
+                </p>
+              )}
+            </SidebarMenu>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter>
           <SidebarMenu>
-            {servers.map((server) => (
-              <SidebarMenuItem key={server.id}>
-                <SidebarMenuButton
-                  isActive={selectedServerId === server.id}
-                  onClick={() => selectServer(server.id)}
-                >
-                  <span
-                    className={clsx(
-                      "size-1.5 shrink-0 rounded-none",
-                      DOT[server.status],
-                    )}
-                  />
-                  <span className="flex-1 truncate">{server.name}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-            {servers.length === 0 && (
-              <p className="px-3 py-2 text-xs text-muted-foreground">
-                No servers yet. Click + to add one.
-              </p>
-            )}
+            <SidebarMenuItem>
+              <NewServerDialog
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+                trigger={
+                  <SidebarMenuButton tooltip="Add server" className="w-full">
+                    <Plus className="size-4 shrink-0" />
+                    <span className="flex-1 text-left">New server</span>
+                  </SidebarMenuButton>
+                }
+              />
+            </SidebarMenuItem>
           </SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter />
-    </Sidebar>
+        </SidebarFooter>
+      </Sidebar>
+    </TooltipProvider>
   );
 }

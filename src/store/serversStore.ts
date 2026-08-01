@@ -61,7 +61,7 @@ const useServersStore = create<ServersStoreState>((set) => ({
   servers: [],
   selectedServerId: undefined,
   docker: null,
-  templateName: "TerraFirmaGreg (Forge 1.20.1)",
+  templateName: "Forge 1.20.1",
   consoleLines: {},
   lastError: null,
   initialized: false,

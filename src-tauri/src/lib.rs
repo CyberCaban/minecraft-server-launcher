@@ -34,9 +34,8 @@ pub fn run() {
                 .collect();
             tracing::info!(count = servers.len(), ?config_path, "config loaded");
             let docker = docker::connect().ok();
-            match &docker {
-                Some(_) => tracing::info!("docker client connected"),
-                None => tracing::error!("docker client unavailable"),
+            if docker.is_none() {
+                tracing::error!("docker client unavailable");
             }
             app.manage(AppState {
                 docker,

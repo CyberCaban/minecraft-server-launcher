@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactElement } from "react";
 import { Loader2, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,11 @@ type Mode = "template" | "yaml";
 export function NewServerDialog({
   open,
   onOpenChange,
+  trigger,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  trigger?: ReactElement;
 }) {
   const createServer = useServersStore((s) => s.createServer);
   const selectServer = useServersStore((s) => s.selectServer);
@@ -65,6 +67,8 @@ export function NewServerDialog({
       if (mode === "yaml" && !yaml.trim()) {
         throw new Error("Paste a compose file or choose one.");
       }
+      console.log(source);
+      
       const server = await createServer(name.trim(), source);
       selectServer(server.id);
       reset();
@@ -80,9 +84,11 @@ export function NewServerDialog({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger
         render={
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7">
-            <Plus />
-          </Button>
+          trigger ?? (
+            <Button variant="ghost" size="icon-sm" className="h-7 w-7">
+              <Plus />
+            </Button>
+          )
         }
       />
       <SheetContent side="right" className="w-full sm:max-w-md">
