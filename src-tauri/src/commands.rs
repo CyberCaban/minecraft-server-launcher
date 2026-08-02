@@ -229,7 +229,7 @@ pub async fn create_server(
             }
         } else {
             let dir = state.workspace.join(&project);
-            let path = dir.join("docker_compose.yml");
+            let path = dir.join("docker-compose.yml");
             if path.exists() {
                 return Err(format!("Server '{name}' already exists"));
             }
