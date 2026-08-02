@@ -78,5 +78,8 @@ fn scalar_to_string(v: &serde_yaml::Value) -> Option<String> {
 }
 
 fn is_truthy(s: &str) -> bool {
-    matches!(s.trim().to_lowercase().as_str(), "true" | "yes" | "1" | "on")
+    matches!(
+        s.trim().to_lowercase().as_str(),
+        "true" | "yes" | "1" | "on"
+    )
 }

@@ -29,10 +29,13 @@ export type TemplateCreateSource = {
   port: number;
   memoryGb: number;
 };
+export type ExistingCreateSource = {
+  composePath: string;
+};
 export type YamlCreateSource = { content: string };
 export type CreateServerPayload = {
   type: CreateServerSource;
-} & (TemplateCreateSource | YamlCreateSource);
+} & (TemplateCreateSource | YamlCreateSource | ExistingCreateSource);
 
 interface ServerLogLine {
   line: string;

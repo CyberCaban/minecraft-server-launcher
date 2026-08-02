@@ -4,7 +4,12 @@ import YamlSourceForm from "./sourceForms/YamlSourceForm";
 import { Button } from "@/components/ui/button";
 import { Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { CreateServerSource, CreateServerPayload, useServersStore } from "@/store/serversStore";
+import {
+  CreateServerSource,
+  CreateServerPayload,
+  useServersStore,
+} from "@/store/serversStore";
+import ExistingSourceForm from "./sourceForms/ExistingSourceForm";
 
 interface CreateServerSourceProps {
   mode: CreateServerSource;
@@ -21,6 +26,7 @@ const CreateServerSourceForm: FunctionComponent<CreateServerSourceProps> = ({
   const [port, setPort] = useState("25565");
   const [memory, setMemory] = useState("2");
   const [yaml, setYaml] = useState("");
+  const [composePath, setComposePath] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,7 +51,9 @@ const CreateServerSourceForm: FunctionComponent<CreateServerSourceProps> = ({
               port: Number(port) || 25565,
               memoryGb: Number(memory) || 2,
             }
-          : { type: "yaml" as const, content: yaml };
+          : mode === "yaml"
+            ? { type: "yaml" as const, content: yaml }
+            : { type: "existing", composePath };
       if (mode === "yaml" && !yaml.trim()) {
         throw new Error("Paste a compose file or choose one.");
       }
@@ -85,6 +93,13 @@ const CreateServerSourceForm: FunctionComponent<CreateServerSourceProps> = ({
       )}
 
       {mode === "yaml" && <YamlSourceForm yaml={yaml} setYaml={setYaml} />}
+
+      {mode === "existing" && (
+        <ExistingSourceForm
+          composePath={composePath}
+          setComposePath={setComposePath}
+        />
+      )}
 
       {error && <p className="text-xs text-destructive">{error}</p>}
 

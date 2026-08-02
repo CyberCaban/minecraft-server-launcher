@@ -23,8 +23,9 @@ pub enum CreateSource {
     Yaml {
         content: String,
     },
-    File {
-        path: String,
+    Existing {
+        #[serde(rename = "composePath")]
+        compose_path: String,
     },
 }
 
@@ -218,27 +219,41 @@ pub async fn create_server(
     if project.is_empty() {
         return Err("Invalid server name".into());
     }
-    let server_dir = state.workspace.join(&project);
-    let compose_path = server_dir.join("docker-compose.yml");
-    if compose_path.exists() {
-        return Err(format!("Server '{name}' already exists"));
-    }
+    let (server_dir, compose_path) = {
+        if let CreateSource::Existing { compose_path } = &source {
+            let path = PathBuf::from(compose_path);
+            if let Some(parent) = path.parent() {
+                (parent.to_path_buf(), path)
+            } else {
+                return Err(format!("Compose file in the root directory!"));
+            }
+        } else {
+            let dir = state.workspace.join(&project);
+            let path = dir.join("docker_compose.yml");
+            if path.exists() {
+                return Err(format!("Server '{name}' already exists"));
+            }
+            (dir, path)
+        }
+    };
 
     let content = match &source {
         CreateSource::Template { port, memory_gb } => {
             templates::render_template(&project, *port, *memory_gb, &random_password())
         }
         CreateSource::Yaml { content } => content.clone(),
-        CreateSource::File { path } => {
-            fs::read_to_string(path).map_err(|e| format!("Failed to read file: {e}"))?
+        CreateSource::Existing { compose_path } => {
+            fs::read_to_string(compose_path).map_err(|e| format!("Failed to read file: {e}"))?
         }
     };
 
     serde_yaml::from_str::<serde_yaml::Value>(&content)
         .map_err(|e| format!("Invalid compose YAML: {e}"))?;
 
-    fs::create_dir_all(&server_dir).map_err(|e| e.to_string())?;
-    fs::write(&compose_path, &content).map_err(|e| e.to_string())?;
+    if !matches!(source, CreateSource::Existing { compose_path: _ }) {
+        fs::create_dir_all(&server_dir).map_err(|e| e.to_string())?;
+        fs::write(&compose_path, &content).map_err(|e| e.to_string())?;
+    }
 
     let has_rcon = templates::detect_rcon(&content);
     let meta = ServerMeta {

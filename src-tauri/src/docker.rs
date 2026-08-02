@@ -32,21 +32,15 @@ fn project_filters(project: &str) -> HashMap<String, Vec<String>> {
     filters
 }
 
-pub async fn find_container_id(
-    docker: &Docker,
-    project: &str,
-) -> Result<Option<String>, String> {
+pub async fn find_container_id(docker: &Docker, project: &str) -> Result<Option<String>, String> {
     let options = ListContainersOptionsBuilder::default()
         .all(true)
         .filters(&project_filters(project))
         .build();
-    let containers = docker
-        .list_containers(Some(options))
-        .await
-        .map_err(|e| {
-            tracing::error!(project, error = %e, "list_containers failed");
-            e.to_string()
-        })?;
+    let containers = docker.list_containers(Some(options)).await.map_err(|e| {
+        tracing::error!(project, error = %e, "list_containers failed");
+        e.to_string()
+    })?;
     let id = containers.into_iter().filter_map(|c| c.id).next();
     tracing::debug!(project, found = id.is_some(), "find_container_id");
     Ok(id)
@@ -57,13 +51,10 @@ pub async fn status_of_project(docker: &Docker, project: &str) -> Result<ServerS
         .all(true)
         .filters(&project_filters(project))
         .build();
-    let containers = docker
-        .list_containers(Some(options))
-        .await
-        .map_err(|e| {
-            tracing::error!(project, error = %e, "status list_containers failed");
-            e.to_string()
-        })?;
+    let containers = docker.list_containers(Some(options)).await.map_err(|e| {
+        tracing::error!(project, error = %e, "status list_containers failed");
+        e.to_string()
+    })?;
     if containers.is_empty() {
         tracing::debug!(project, "no containers found, status=Stopped");
         return Ok(ServerStatus::Stopped);
@@ -99,13 +90,10 @@ pub async fn run_exec(
             tracing::error!(cmd = ?args, error = %e, "create_exec failed");
             e.to_string()
         })?;
-    let result = docker
-        .start_exec(&created.id, None)
-        .await
-        .map_err(|e| {
-            tracing::error!(cmd = ?args, error = %e, "start_exec failed");
-            e.to_string()
-        })?;
+    let result = docker.start_exec(&created.id, None).await.map_err(|e| {
+        tracing::error!(cmd = ?args, error = %e, "start_exec failed");
+        e.to_string()
+    })?;
 
     match result {
         StartExecResults::Detached => {

@@ -6,12 +6,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::models::LogEvent;
 
-pub async fn stream_logs(
-    app: AppHandle,
-    docker: Docker,
-    server_id: String,
-    container_id: String,
-) {
+pub async fn stream_logs(app: AppHandle, docker: Docker, server_id: String, container_id: String) {
     tracing::info!(server_id, container_id = %&container_id[..container_id.len().min(12)], "log stream started");
     let options = LogsOptionsBuilder::default()
         .stdout(true)

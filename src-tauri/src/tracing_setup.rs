@@ -17,8 +17,7 @@ pub fn init(log_dir: &Path) {
         .ok();
 
     let default = "info,server_launcher_lib=debug,hyper=warn,tao=warn,wry=warn".to_string();
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default));
 
     let mut layers: Vec<Box<dyn Layer<Registry> + Send + Sync>> = Vec::new();
     if let Some(f) = file {
