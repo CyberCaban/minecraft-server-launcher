@@ -7,6 +7,7 @@ import { useServersStore } from "./store/serversStore";
 import { StatusBadge } from "./features/serverPanel/StatusBadge";
 import { Button } from "./components/ui/button";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { FolderOpen } from "lucide-react";
 
 function App() {
   const init = useServersStore((s) => s.init);
@@ -26,7 +27,7 @@ function App() {
           <SidebarTrigger />
           {server && (
             <div className="flex flex-row justify-between w-full">
-              <div className="flex flex-row gap-2">
+              <div className="flex flex-row items-center gap-2">
                 <h2 className="text-lg font-semibold">{server.name}</h2>
                 <StatusBadge status={server.status} />
               </div>
@@ -35,7 +36,7 @@ function App() {
                   await revealItemInDir(server.path);
                 }}
               >
-                Open folder
+                <FolderOpen />
               </Button>
             </div>
           )}

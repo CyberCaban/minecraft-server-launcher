@@ -16,6 +16,7 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useServersStore, type ServerStatus } from "@/store/serversStore";
 import { NewServerDialog } from "./NewServerDialog/NewServerDialog";
+import { ThemeToggle } from "@/components/themeToggle";
 
 const DOT: Record<ServerStatus, string> = {
   running: "bg-emerald-400",
@@ -35,11 +36,14 @@ export function AppSidebar() {
     <TooltipProvider>
       <Sidebar collapsible="icon">
         <SidebarHeader>
-          <div className="flex items-center gap-2 px-2 py-1.5">
-            <Box className="size-5 shrink-0" />
-            <span className="truncate text-sm font-bold group-data-[collapsible=icon]:hidden">
-              Minecraft Server Launcher
-            </span>
+          <div className="flex flex-row items-center justify-between gap-2 px-2 py-1.5">
+            <div className="flex flex-row items-center gap-2">
+              <Box className="size-5 shrink-0" />
+              <span className="truncate text-sm font-bold group-data-[collapsible=icon]:hidden">
+                Server Launcher
+              </span>
+            </div>
+            <ThemeToggle className="group-data-[collapsible=icon]:hidden" />
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -54,7 +58,9 @@ export function AppSidebar() {
                     tooltip={server.name}
                   >
                     <Server className="size-4 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">{server.name}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {server.name}
+                    </span>
                     <span
                       className={clsx(
                         "size-2 shrink-0 rounded-full",
