@@ -24,10 +24,15 @@ export interface DockerStatus {
   error: string | null;
 }
 
-export type CreateSource =
-  | { type: "template"; port: number; memoryGb: number }
-  | { type: "yaml"; content: string }
-  | { type: "file"; path: string };
+export type CreateServerSource = "template" | "yaml" | "existing";
+export type TemplateCreateSource = {
+  port: number;
+  memoryGb: number;
+};
+export type YamlCreateSource = { content: string };
+export type CreateServerPayload = {
+  type: CreateServerSource;
+} & (TemplateCreateSource | YamlCreateSource);
 
 interface ServerLogLine {
   line: string;
@@ -44,7 +49,7 @@ interface ServersStoreState {
   initialized: boolean;
   init: () => Promise<void>;
   selectServer: (serverId: string) => void;
-  createServer: (name: string, source: CreateSource) => Promise<Server>;
+  createServer: (name: string, source: CreateServerPayload) => Promise<Server>;
   startServer: (serverId: string) => Promise<void>;
   stopServer: (serverId: string) => Promise<void>;
   restartServer: (serverId: string) => Promise<void>;
@@ -78,7 +83,9 @@ const useServersStore = create<ServersStoreState>((set) => ({
             set((state) => {
               const current = state.consoleLines[serverId] ?? [];
               const next = [...current, { line, ts: Date.now() }].slice(-1000);
-              return { consoleLines: { ...state.consoleLines, [serverId]: next } };
+              return {
+                consoleLines: { ...state.consoleLines, [serverId]: next },
+              };
             });
           },
         ),

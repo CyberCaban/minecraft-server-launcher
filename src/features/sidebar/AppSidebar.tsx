@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useServersStore, type ServerStatus } from "@/store/serversStore";
-import { NewServerDialog } from "./NewServerDialog";
+import { NewServerDialog } from "./NewServerDialog/NewServerDialog";
 
 const DOT: Record<ServerStatus, string> = {
   running: "bg-emerald-400",
