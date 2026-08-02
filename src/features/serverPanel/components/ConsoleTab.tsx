@@ -3,6 +3,7 @@ import { AlertCircle, Play, RotateCw, Square, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useServersStore, type DockerStatus } from "@/store/serversStore";
 import { Console } from "./Console";
+import { confirm } from "@tauri-apps/plugin-dialog";
 
 function DockerWarning({ docker }: { docker: DockerStatus }) {
   return (
@@ -70,8 +71,14 @@ export default function ConsoleTab() {
 
   const handleRemove = async () => {
     if (
-      window.confirm(
+      await confirm(
         `Delete server "${server.name}"? This stops its containers and removes its folder.`,
+        {
+          title: "Confirm Delete",
+          kind: "warning",
+          okLabel: "Delete",
+          cancelLabel: "Cancel",
+        },
       )
     ) {
       try {
