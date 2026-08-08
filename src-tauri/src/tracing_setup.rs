@@ -39,6 +39,6 @@ pub fn init(log_dir: &Path) {
             .boxed(),
     );
 
-    let _ = tracing_subscriber::registry().with(layers).init();
+    tracing_subscriber::registry().with(layers).init();
     let _ = tracing_log::LogTracer::init();
 }

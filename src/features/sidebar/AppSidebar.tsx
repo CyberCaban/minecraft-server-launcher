@@ -81,20 +81,19 @@ export function AppSidebar() {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <NewServerDialog
-                open={dialogOpen}
-                onOpenChange={setDialogOpen}
-                trigger={
-                  <SidebarMenuButton tooltip="Add server" className="w-full">
-                    <Plus className="size-4 shrink-0" />
-                    <span className="flex-1 text-left">New server</span>
-                  </SidebarMenuButton>
-                }
-              />
+              <SidebarMenuButton
+                tooltip="Add server"
+                className="w-full"
+                onClick={() => setDialogOpen(true)}
+              >
+                <Plus className="size-4 shrink-0" />
+                <span className="flex-1 text-left">New server</span>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
+      <NewServerDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </TooltipProvider>
   );
 }

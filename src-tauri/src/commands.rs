@@ -225,7 +225,7 @@ pub async fn create_server(
             if let Some(parent) = path.parent() {
                 (parent.to_path_buf(), path)
             } else {
-                return Err(format!("Compose file in the root directory!"));
+                return Err("Compose file in the root directory!".to_string());
             }
         } else {
             let dir = state.workspace.join(&project);
@@ -290,13 +290,12 @@ pub async fn start_server(
         .ok_or("Docker unavailable".to_string())?;
 
     let (project, path) = {
-        let mut servers = state.servers.lock().unwrap();
-        let entry = servers
-            .iter_mut()
-            .find(|e| e.meta.id == server_id)
-            .ok_or("Server not found".to_string())?;
-        entry.meta.status = ServerStatus::Starting;
-        (entry.meta.project.clone(), PathBuf::from(&entry.meta.path))
+        state
+            .update_server_entry(&server_id, |entry| {
+                entry.meta.status = ServerStatus::Starting;
+                (entry.meta.project.clone(), PathBuf::from(&entry.meta.path))
+            })
+            .ok_or("Server not found".to_string())?
     };
     tracing::info!(server_id, project, "start_server: setting status Starting");
     emit_status(&app, &server_id, &ServerStatus::Starting);
@@ -311,24 +310,21 @@ pub async fn start_server(
 
         let container_id = docker_mod::find_container_id(&docker, &project).await?;
 
-        {
-            let mut servers = state.servers.lock().unwrap();
-            if let Some(entry) = servers.iter_mut().find(|e| e.meta.id == server_id) {
-                entry.meta.status = ServerStatus::Running;
-                entry.container_id = container_id.clone();
-            }
-        }
+        state.update_server_entry(&server_id, |entry| {
+            entry.meta.status = ServerStatus::Running;
+            entry.container_id = container_id.clone();
+        });
         tracing::info!(server_id, project, container_id = container_id.as_deref().map(|s| &s[..s.len().min(12)]), "start_server: running");
         emit_status(&app, &server_id, &ServerStatus::Running);
 
         if let Some(cid) = container_id {
-            let handle = tauri::async_runtime::spawn(logging::stream_logs(
+            let handle = logging::start_logging_task(
                 app.clone(),
                 docker,
                 server_id.clone(),
                 cid,
-            ));
-            state.log_tasks.lock().unwrap().insert(server_id.clone(), handle);
+            );
+            state.insert_log_task(server_id.clone(), handle);
         }
 
         find_meta(&state, &server_id).ok_or("Server not found".to_string())
@@ -348,7 +344,7 @@ pub async fn stop_server(
     state: State<'_, AppState>,
     server_id: String,
 ) -> Result<ServerMeta, String> {
-    if let Some(handle) = state.log_tasks.lock().unwrap().remove(&server_id) {
+    if let Some(handle) = state.remove_log_task(&server_id) {
         handle.abort();
     }
 
@@ -372,8 +368,7 @@ pub async fn stop_server(
             compose::compose_stop(&project_stop, &compose_file)
         })
         .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e)?;
+        .map_err(|e| e.to_string())??;
 
         {
             let mut servers = state.servers.lock().unwrap();
@@ -405,17 +400,16 @@ pub async fn restart_server(
         .docker
         .clone()
         .ok_or("Docker unavailable".to_string())?;
-    if let Some(handle) = state.log_tasks.lock().unwrap().remove(&server_id) {
+    if let Some(handle) = state.remove_log_task(&server_id) {
         handle.abort();
     }
 
     let (project, path) = {
-        let mut servers = state.servers.lock().unwrap();
-        let entry = servers
-            .iter_mut()
-            .find(|e| e.meta.id == server_id)
-            .ok_or("Server not found".to_string())?;
-        (entry.meta.project.clone(), PathBuf::from(&entry.meta.path))
+        state
+            .update_server_entry(&server_id, |entry| {
+                (entry.meta.project.clone(), PathBuf::from(&entry.meta.path))
+            })
+            .ok_or("Server not found".to_string())?
     };
     tracing::info!(
         server_id,
@@ -434,27 +428,15 @@ pub async fn restart_server(
 
         let container_id = docker_mod::find_container_id(&docker, &project).await?;
 
-        {
-            let mut servers = state.servers.lock().unwrap();
-            if let Some(entry) = servers.iter_mut().find(|e| e.meta.id == server_id) {
-                entry.meta.status = ServerStatus::Running;
-                entry.container_id = container_id.clone();
-            }
-        }
+        state.update_server_entry(&server_id, |entry| {
+            entry.meta.status = ServerStatus::Running;
+            entry.container_id = container_id.clone();
+        });
         emit_status(&app, &server_id, &ServerStatus::Running);
 
         if let Some(cid) = container_id {
-            let handle = tauri::async_runtime::spawn(logging::stream_logs(
-                app.clone(),
-                docker,
-                server_id.clone(),
-                cid,
-            ));
-            state
-                .log_tasks
-                .lock()
-                .unwrap()
-                .insert(server_id.clone(), handle);
+            let handle = logging::start_logging_task(app.clone(), docker, server_id.clone(), cid);
+            state.insert_log_task(server_id.clone(), handle);
         }
 
         find_meta(&state, &server_id).ok_or("Server not found".to_string())
@@ -470,7 +452,7 @@ pub async fn restart_server(
 
 #[tauri::command]
 pub async fn remove_server(state: State<'_, AppState>, server_id: String) -> Result<(), String> {
-    if let Some(handle) = state.log_tasks.lock().unwrap().remove(&server_id) {
+    if let Some(handle) = state.remove_log_task(&server_id) {
         handle.abort();
     }
 
@@ -516,12 +498,9 @@ pub async fn get_server_status(
             .ok_or("Server not found".to_string())?
     };
     let status = docker_mod::status_of_project(&docker, &project).await?;
-    {
-        let mut servers = state.servers.lock().unwrap();
-        if let Some(entry) = servers.iter_mut().find(|e| e.meta.id == server_id) {
-            entry.meta.status = status.clone();
-        }
-    }
+    state.update_server_entry(&server_id, |entry| {
+        entry.meta.status = status.clone();
+    });
     emit_status(&app, &server_id, &status);
     find_meta(&state, &server_id).ok_or("Server not found".to_string())
 }
@@ -544,30 +523,24 @@ pub async fn refresh_status(
     };
     for (id, project) in projects {
         if let Ok(status) = docker_mod::status_of_project(&docker, &project).await {
-            {
-                let mut servers = state.servers.lock().unwrap();
-                if let Some(entry) = servers.iter_mut().find(|e| e.meta.id == id) {
-                    entry.meta.status = status.clone();
-                }
-            }
+            state.update_server_entry(&id, |entry| {
+                entry.meta.status = status.clone();
+            });
             emit_status(&app, &id, &status);
             if status == ServerStatus::Running {
-                let already = state.log_tasks.lock().unwrap().contains_key(&id);
+                let already = state.contains_log_task(&id);
                 if !already {
                     if let Ok(Some(cid)) = docker_mod::find_container_id(&docker, &project).await {
-                        {
-                            let mut servers = state.servers.lock().unwrap();
-                            if let Some(entry) = servers.iter_mut().find(|e| e.meta.id == id) {
-                                entry.container_id = Some(cid.clone());
-                            }
-                        }
-                        let handle = tauri::async_runtime::spawn(logging::stream_logs(
+                        state.update_server_entry(&id, |entry| {
+                            entry.container_id = Some(cid.clone());
+                        });
+                        let handle = logging::start_logging_task(
                             app.clone(),
                             docker.clone(),
                             id.clone(),
                             cid,
-                        ));
-                        state.log_tasks.lock().unwrap().insert(id.clone(), handle);
+                        );
+                        state.insert_log_task(id.clone(), handle);
                     }
                 }
             }

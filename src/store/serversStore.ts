@@ -51,6 +51,7 @@ interface ServersStoreState {
   lastError: string | null;
   initialized: boolean;
   init: () => Promise<void>;
+  updateDockerStatus: () => void;
   selectServer: (serverId: string) => void;
   createServer: (name: string, source: CreateServerPayload) => Promise<Server>;
   startServer: (serverId: string) => Promise<void>;
@@ -117,6 +118,11 @@ const useServersStore = create<ServersStoreState>((set) => ({
       });
     })();
     return initPromise;
+  },
+
+  updateDockerStatus: async () => {
+      const docker = await invoke<DockerStatus>("docker_status");
+      set({docker})
   },
 
   selectServer: (serverId) => set({ selectedServerId: serverId }),

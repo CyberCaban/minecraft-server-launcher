@@ -43,9 +43,7 @@ pub fn detect_rcon(content: &str) -> bool {
         } else if let Some(list) = env.as_sequence() {
             list.iter().find_map(|v| {
                 let s = v.as_str()?;
-                let mut parts = s.splitn(2, '=');
-                let key = parts.next()?;
-                let val = parts.next()?;
+                let (key, val) = s.split_once('=')?;
                 if key.trim().eq_ignore_ascii_case("ENABLE_RCON") {
                     Some(val.trim().to_string())
                 } else {

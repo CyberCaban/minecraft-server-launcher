@@ -2,7 +2,7 @@ use bollard::container::LogOutput;
 use bollard::query_parameters::LogsOptionsBuilder;
 use bollard::Docker;
 use futures_util::StreamExt;
-use tauri::{AppHandle, Emitter};
+use tauri::{async_runtime::JoinHandle, AppHandle, Emitter};
 
 use crate::models::LogEvent;
 
@@ -20,7 +20,8 @@ pub async fn stream_logs(app: AppHandle, docker: Docker, server_id: String, cont
         match item {
             Ok(LogOutput::StdOut { message })
             | Ok(LogOutput::StdErr { message })
-            | Ok(LogOutput::Console { message }) => {
+            | Ok(LogOutput::Console { message })
+            | Ok(LogOutput::StdIn { message }) => {
                 let text = String::from_utf8_lossy(&message);
                 for line in text.lines() {
                     let line = line.trim_end_matches('\r').to_string();
@@ -35,7 +36,6 @@ pub async fn stream_logs(app: AppHandle, docker: Docker, server_id: String, cont
                     }
                 }
             }
-            Ok(_) => {}
             Err(e) => {
                 tracing::warn!(server_id, error = %e, "log stream error, ending");
                 break;
@@ -78,4 +78,13 @@ pub async fn recent_logs(
     }
     tracing::debug!(lines = out.len(), "recent_logs fetched");
     Ok(out)
+}
+
+pub fn start_logging_task(
+    app: AppHandle,
+    docker: Docker,
+    server_id: String,
+    container_id: String,
+) -> JoinHandle<()> {
+    tauri::async_runtime::spawn(stream_logs(app, docker, server_id, container_id))
 }

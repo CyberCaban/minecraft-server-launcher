@@ -6,12 +6,17 @@ import { Console } from "./Console";
 import { confirm } from "@tauri-apps/plugin-dialog";
 
 function DockerWarning({ docker }: { docker: DockerStatus }) {
+  const updateDockerStatus = useServersStore((s) => s.updateDockerStatus);
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-lg font-semibold">Docker unavailable</h2>
       <p className="text-sm text-muted-foreground">
         {docker.error ?? "Docker engine is not running."} Make sure Docker
-        Desktop is installed and running
+        Desktop is installed and running <br /> <br />
+        <Button size={"sm"} variant={"secondary"} onClick={updateDockerStatus}>
+          <RotateCw className="" />
+          Refresh
+        </Button>
       </p>
     </div>
   );
